@@ -17,10 +17,11 @@ describe('Auth Controller (e2e)', () => {
         }),
       );
     });
+
     app = result.app;
+
     authTestManager = result.authTestManager;
   });
-
   afterAll(async () => {
     await app.close();
   });
