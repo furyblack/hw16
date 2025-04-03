@@ -14,7 +14,7 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(), new DomainExceptionsFilter());
 
   // Получаем порт через ConfigService с fallback значением
-  const PORT = configService.get<number>('PORT', 3000);
+  const PORT = configService.get<number>('PORT', 4005);
 
   await app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
