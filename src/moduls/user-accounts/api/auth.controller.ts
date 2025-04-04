@@ -26,7 +26,6 @@ import {
   PasswordRecoveryDto,
 } from '../dto/confirm-registration-dto';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { CustomThrottlerGuard } from '../../../core/guards/custom-throttler-guard';
 
 @Controller('auth')
 export class AuthController {
@@ -36,15 +35,15 @@ export class AuthController {
     private authQueryRepository: AuthQueryRepository,
   ) {}
 
-  @UseGuards(ThrottlerGuard)
   @Post('registration')
+  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   registration(@Body() body: CreateUserInputDto): Promise<void> {
     return this.usersService.registerUser(body);
   }
 
   @Post('login')
-  @UseGuards(CustomThrottlerGuard)
+  @UseGuards(ThrottlerGuard)
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
   async login(
@@ -87,8 +86,9 @@ export class AuthController {
       };
     }
   }
-  @UseGuards(ThrottlerGuard)
+
   @Post('registration-confirmation')
+  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.NO_CONTENT) // 204 при успешном подтверждении
   async confirmRegistration(
     @Body() dto: ConfirmRegistrationDto,
@@ -96,14 +96,15 @@ export class AuthController {
     await this.authService.confirmRegistration(dto.code);
   }
 
-  @UseGuards(ThrottlerGuard)
   @Post('password-recovery')
+  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async passwordRecovery(@Body() dto: PasswordRecoveryDto): Promise<void> {
     await this.authService.passwordRecovery(dto.email);
   }
-  @UseGuards(ThrottlerGuard)
+
   @Post('registration-email-resending')
+  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async emailResending(@Body() dto: PasswordRecoveryDto): Promise<void> {
     await this.authService.emailResending(dto.email);

@@ -59,6 +59,7 @@ export class AuthService {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new BadRequestException('User not found');
+      // throw new UnauthorizedException('Invalid credentials');
     }
     const accessToken = this.generateAccessToken(userId, user.login);
     const refreshToken = this.generateRefreshToken(userId, user.login);
