@@ -26,6 +26,7 @@ import {
   PasswordRecoveryDto,
 } from '../dto/confirm-registration-dto';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { CustomThrottlerGuard } from '../../../core/guards/custom-throttler-guard';
 
 @Controller('auth')
 export class AuthController {
@@ -43,8 +44,9 @@ export class AuthController {
   }
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)
+  @UseGuards(CustomThrottlerGuard)
   @UseGuards(LocalAuthGuard)
+  @HttpCode(HttpStatus.OK)
   async login(
     @ExtractUserFromRequest() user: UserContextDto,
     @Res({ passthrough: true }) response: Response, // Используем @Res для установки cookie
@@ -55,7 +57,7 @@ export class AuthController {
     response.cookie('refreshToken', refreshToken, {
       httpOnly: true, // Защита от XSS
       secure: true, // В production используем HTTPS
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
+      maxAge: 20 * 1000, // 20 сек
     });
 
     // Возвращаем accessToken в теле ответа

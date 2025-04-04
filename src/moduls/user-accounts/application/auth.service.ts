@@ -22,7 +22,7 @@ export class AuthService {
   private generateAccessToken(userId: string, login: string): string {
     return this.jwtService.sign(
       { id: userId, login },
-      { expiresIn: '15m' }, // accessToken действует 15 минут
+      { expiresIn: '10s' }, // accessToken действует 15 минут
     );
   }
 
@@ -30,7 +30,7 @@ export class AuthService {
   private generateRefreshToken(userId: string, login: string): string {
     return this.jwtService.sign(
       { id: userId, login },
-      { expiresIn: '7d' }, // refreshToken действует 7 дней
+      { expiresIn: '20s' }, // refreshToken действует 7 дней
     );
   }
   async validateUser(
