@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -26,12 +27,16 @@ import {
   PasswordRecoveryDto,
 } from '../dto/confirm-registration-dto';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { Cookies } from '../decarators/cookies.decorator';
+import { Request } from 'express';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private usersService: UsersService,
     private authService: AuthService,
+    private jwtService: JwtService,
     private authQueryRepository: AuthQueryRepository,
   ) {}
 
@@ -48,19 +53,52 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @ExtractUserFromRequest() user: UserContextDto,
-    @Res({ passthrough: true }) response: Response, // Используем @Res для установки cookie
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<{ accessToken: string }> {
-    const { accessToken, refreshToken } = await this.authService.login(user.id);
+    const userAgent = request.headers['user-agent'] ?? 'unknown'; // Используем nullish coalescing
+    const ip = request.ip ?? 'unknown'; // На всякий случай обрабатываем и ip
 
-    // Устанавливаем refreshToken в cookie
+    const { accessToken, refreshToken } = await this.authService.login(
+      user.id,
+      ip,
+      userAgent,
+    );
+
     response.cookie('refreshToken', refreshToken, {
-      httpOnly: true, // Защита от XSS
-      secure: true, // В production используем HTTPS
-      maxAge: 20 * 1000, // 20 сек
+      httpOnly: true,
+      secure: true,
+      maxAge: 20 * 1000,
     });
 
-    // Возвращаем accessToken в теле ответа
     return { accessToken };
+  }
+
+  @Post('refresh-token')
+  async refreshToken(
+    @Cookies('refreshToken') refreshToken: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { newAccessToken, newRefreshToken } =
+      await this.authService.refreshToken(refreshToken);
+
+    response.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 20 * 1000,
+    });
+
+    return { accessToken: newAccessToken };
+  }
+
+  @Post('logout')
+  @HttpCode(204)
+  async logout(
+    @Cookies('refreshToken') refreshToken: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.logout(refreshToken);
+    response.clearCookie('refreshToken');
   }
 
   @ApiBearerAuth()

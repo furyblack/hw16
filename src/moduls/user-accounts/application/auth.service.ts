@@ -4,9 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import { CryptoService } from './crypto.service';
 import { UserContextDto } from '../guards/dto/user-context.dto';
 import { UsersService } from './users.service';
-import { CreateUserDto } from '../dto/create-user.dto';
 import { EmailService } from '../../notifications/email.service';
 import { BadRequestDomainException } from '../../../core/exceptions/domain-exceptions';
+import { SessionService } from './session.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -16,22 +17,78 @@ export class AuthService {
     private cryptoService: CryptoService,
     readonly usersService: UsersService,
     private emailService: EmailService,
+    private sessionService: SessionService,
   ) {}
 
-  // Генерация accessToken
   private generateAccessToken(userId: string, login: string): string {
-    return this.jwtService.sign(
-      { id: userId, login },
-      { expiresIn: '10s' }, // accessToken действует 15 минут
-    );
+    return this.jwtService.sign({ userId, login }, { expiresIn: '10s' });
   }
 
-  // Генерация refreshToken
-  private generateRefreshToken(userId: string, login: string): string {
-    return this.jwtService.sign(
-      { id: userId, login },
-      { expiresIn: '20s' }, // refreshToken действует 7 дней
-    );
+  private generateRefreshToken(userId: string, deviceId: string): string {
+    return this.jwtService.sign({ userId, deviceId }, { expiresIn: '20s' });
+  }
+
+  async login(userId: string, ip: string, userAgent: string) {
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const deviceId = randomUUID();
+    const accessToken = this.generateAccessToken(user.id, user.login);
+    const refreshToken = this.generateRefreshToken(user.id, deviceId);
+
+    await this.sessionService.createSession({
+      ip,
+      title: userAgent,
+      deviceId,
+      userId: user.id,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  async refreshToken(oldRefreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(oldRefreshToken);
+      if (!payload?.userId || !payload?.deviceId) {
+        throw new BadRequestException('Invalid refresh token');
+      }
+
+      const session = await this.sessionService.findSessionByDeviceId(
+        payload.deviceId,
+      );
+      if (!session) {
+        throw new BadRequestException('Session not found');
+      }
+
+      const user = await this.usersRepository.findById(payload.userId);
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      const newAccessToken = this.generateAccessToken(user.id, user.login);
+      const newRefreshToken = this.generateRefreshToken(
+        user.id,
+        payload.deviceId,
+      );
+
+      await this.sessionService.updateSessionLastActiveDate(payload.deviceId);
+
+      return { newAccessToken, newRefreshToken };
+    } catch (e) {
+      throw new BadRequestException('Invalid refresh token');
+    }
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+      await this.sessionService.deleteSessionByDeviceId(payload.deviceId);
+    } catch (e) {
+      // Логируем ошибку, но не прерываем выполнение
+      console.error('Error during logout:', e);
+    }
   }
   async validateUser(
     login: string,
@@ -53,29 +110,6 @@ export class AuthService {
     return { id: user.id.toString() };
   }
 
-  async login(
-    userId: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    const user = await this.usersRepository.findById(userId);
-    if (!user) {
-      throw new BadRequestException('User not found');
-      // throw new UnauthorizedException('Invalid credentials');
-    }
-    const accessToken = this.generateAccessToken(userId, user.login);
-    const refreshToken = this.generateRefreshToken(userId, user.login);
-    return {
-      accessToken,
-      refreshToken,
-    };
-  }
-  async register(dto: CreateUserDto) {
-    const loginExists = await this.usersService.isLoginTaken(dto.login);
-    if (loginExists) {
-      throw new BadRequestException('Login already exists');
-    }
-
-    return this.usersService.createUser(dto);
-  }
   async confirmRegistration(code: string): Promise<void> {
     const user = await this.usersRepository.findByConfirmationCode(code);
 
