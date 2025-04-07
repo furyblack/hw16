@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express'; // Импортируем Response из express
@@ -75,30 +76,51 @@ export class AuthController {
   }
 
   @Post('refresh-token')
+  @UseGuards(ThrottlerGuard)
+  @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Cookies('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { newAccessToken, newRefreshToken } =
-      await this.authService.refreshToken(refreshToken);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not provided');
+    }
 
-    response.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: true,
-      maxAge: 20 * 1000,
-    });
+    try {
+      const { newAccessToken, newRefreshToken } =
+        await this.authService.refreshToken(refreshToken);
 
-    return { accessToken: newAccessToken };
+      response.cookie('refreshToken', newRefreshToken, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 20 * 1000,
+      });
+
+      return { accessToken: newAccessToken };
+    } catch (e) {
+      response.clearCookie('refreshToken');
+      throw e;
+    }
   }
 
   @Post('logout')
-  @HttpCode(204)
+  @UseGuards(ThrottlerGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Cookies('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await this.authService.logout(refreshToken);
-    response.clearCookie('refreshToken');
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not provided');
+    }
+
+    try {
+      await this.authService.logout(refreshToken);
+      response.clearCookie('refreshToken');
+    } catch (e) {
+      response.clearCookie('refreshToken');
+      throw e;
+    }
   }
 
   @ApiBearerAuth()

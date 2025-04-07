@@ -1,6 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersRepository } from '../infrastructure/users.repository';
-import { JwtService } from '@nestjs/jwt';
+import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { CryptoService } from './crypto.service';
 import { UserContextDto } from '../guards/dto/user-context.dto';
 import { UsersService } from './users.service';
@@ -49,36 +53,53 @@ export class AuthService {
   }
 
   async refreshToken(oldRefreshToken: string) {
+    let payload;
+
     try {
-      const payload = this.jwtService.verify(oldRefreshToken);
-      if (!payload?.userId || !payload?.deviceId) {
-        throw new BadRequestException('Invalid refresh token');
-      }
-
-      const session = await this.sessionService.findSessionByDeviceId(
-        payload.deviceId,
-      );
-      if (!session) {
-        throw new BadRequestException('Session not found');
-      }
-
-      const user = await this.usersRepository.findById(payload.userId);
-      if (!user) {
-        throw new BadRequestException('User not found');
-      }
-
-      const newAccessToken = this.generateAccessToken(user.id, user.login);
-      const newRefreshToken = this.generateRefreshToken(
-        user.id,
-        payload.deviceId,
-      );
-
-      await this.sessionService.updateSessionLastActiveDate(payload.deviceId);
-
-      return { newAccessToken, newRefreshToken };
+      // Пытаемся верифицировать токен
+      payload = this.jwtService.verify(oldRefreshToken);
     } catch (e) {
-      throw new BadRequestException('Invalid refresh token');
+      // Обрабатываем истечение срока действия токена
+      if (e instanceof TokenExpiredError) {
+        throw new UnauthorizedException('Refresh token expired');
+      }
+      // Обрабатываем другие ошибки JWT
+      if (e instanceof JsonWebTokenError) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      throw e;
     }
+
+    // Проверяем наличие обязательных полей
+    if (!payload?.userId || !payload?.deviceId) {
+      throw new UnauthorizedException('Invalid refresh token payload');
+    }
+
+    // Проверяем существование сессии
+    const session = await this.sessionService.findSessionByDeviceId(
+      payload.deviceId,
+    );
+    if (!session) {
+      throw new UnauthorizedException('Session not found');
+    }
+
+    // Проверяем существование пользователя
+    const user = await this.usersRepository.findById(payload.userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Генерируем новые токены
+    const newAccessToken = this.generateAccessToken(user.id, user.login);
+    const newRefreshToken = this.generateRefreshToken(
+      user.id,
+      payload.deviceId,
+    );
+
+    // Обновляем дату последней активности
+    await this.sessionService.updateSessionLastActiveDate(payload.deviceId);
+
+    return { newAccessToken, newRefreshToken };
   }
 
   async logout(refreshToken: string): Promise<void> {
