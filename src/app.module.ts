@@ -31,6 +31,11 @@ import { CoreModule } from './core/core.module';
       {
         ttl: 10000,
         limit: 5,
+        skipIf: (context) => {
+          // Пропускаем throttling для успешных запросов
+          const req = context.switchToHttp().getRequest();
+          return req.user !== undefined; // Если пользователь аутентифицирован
+        },
       },
     ]),
   ],

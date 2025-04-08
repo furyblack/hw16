@@ -49,8 +49,8 @@ export class AuthController {
   }
 
   @Post('login')
-  @UseGuards(ThrottlerGuard)
   @UseGuards(LocalAuthGuard)
+  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   async login(
     @ExtractUserFromRequest() user: UserContextDto,
