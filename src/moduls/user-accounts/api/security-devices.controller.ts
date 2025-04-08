@@ -6,20 +6,20 @@ import { ExtractUserFromRequest } from '../guards/decorators/param/extract-user-
 import { UserContextDto } from '../guards/dto/user-context.dto';
 import { Cookies } from '../decarators/cookies.decorator';
 
-@Controller('security/devices')
+@Controller('security')
 export class SecurityDevicesController {
   constructor(
     private sessionService: SessionService,
     private jwtService: JwtService,
   ) {}
 
-  @Get()
+  @Get('devices')
   @UseGuards(JwtAuthGuard)
   async getDevices(@ExtractUserFromRequest() user: UserContextDto) {
     return this.sessionService.findAllSessionsForUser(user.id);
   }
 
-  @Delete()
+  @Delete('devices')
   @UseGuards(JwtAuthGuard)
   async terminateOtherSessions(
     @ExtractUserFromRequest() user: UserContextDto,
@@ -30,7 +30,7 @@ export class SecurityDevicesController {
     return { statusCode: 204 };
   }
 
-  @Delete(':deviceId')
+  @Delete('devices/:deviceId')
   @UseGuards(JwtAuthGuard)
   async terminateDevice(
     @ExtractUserFromRequest() user: UserContextDto,
