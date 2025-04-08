@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersRepository } from '../infrastructure/users.repository';
-import { JsonWebTokenError, JwtService, TokenExpiredError } from '@nestjs/jwt';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { CryptoService } from './crypto.service';
 import { UserContextDto } from '../guards/dto/user-context.dto';
 import { UsersService } from './users.service';
@@ -41,75 +41,59 @@ export class AuthService {
     const deviceId = randomUUID();
     const accessToken = this.generateAccessToken(user.id, user.login);
     const refreshToken = this.generateRefreshToken(user.id, deviceId);
+    const refreshDecode = this.jwtService.decode(refreshToken);
 
     await this.sessionService.createSession({
       ip,
       title: userAgent,
       deviceId,
       userId: user.id,
+      lastActiveDate: refreshDecode.iat,
     });
 
     return { accessToken, refreshToken };
   }
 
+  async logout(deviceId: string): Promise<void> {
+    await this.sessionService.deleteSessionByDeviceId(deviceId);
+  }
+
   async refreshToken(oldRefreshToken: string) {
     let payload;
-
     try {
-      // Пытаемся верифицировать токен
       payload = this.jwtService.verify(oldRefreshToken);
     } catch (e) {
-      // Обрабатываем истечение срока действия токена
       if (e instanceof TokenExpiredError) {
         throw new UnauthorizedException('Refresh token expired');
       }
-      // Обрабатываем другие ошибки JWT
-      if (e instanceof JsonWebTokenError) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-      throw e;
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Проверяем наличие обязательных полей
-    if (!payload?.userId || !payload?.deviceId) {
-      throw new UnauthorizedException('Invalid refresh token payload');
-    }
-
-    // Проверяем существование сессии
     const session = await this.sessionService.findSessionByDeviceId(
       payload.deviceId,
     );
     if (!session) {
       throw new UnauthorizedException('Session not found');
     }
+    console.log(session);
+    if (payload.iat != session.lastActiveDate) {
+      throw new UnauthorizedException('session not found1111');
+    }
 
-    // Проверяем существование пользователя
     const user = await this.usersRepository.findById(payload.userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Генерируем новые токены
     const newAccessToken = this.generateAccessToken(user.id, user.login);
     const newRefreshToken = this.generateRefreshToken(
       user.id,
       payload.deviceId,
     );
 
-    // Обновляем дату последней активности
     await this.sessionService.updateSessionLastActiveDate(payload.deviceId);
 
     return { newAccessToken, newRefreshToken };
-  }
-
-  async logout(refreshToken: string): Promise<void> {
-    try {
-      const payload = this.jwtService.verify(refreshToken);
-      await this.sessionService.deleteSessionByDeviceId(payload.deviceId);
-    } catch (e) {
-      // Логируем ошибку, но не прерываем выполнение
-      console.error('Error during logout:', e);
-    }
   }
   async validateUser(
     login: string,

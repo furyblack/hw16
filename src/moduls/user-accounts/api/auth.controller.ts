@@ -30,7 +30,7 @@ import {
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Cookies } from '../decarators/cookies.decorator';
 import { Request } from 'express';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 
 @Controller('auth')
 export class AuthController {
@@ -76,19 +76,22 @@ export class AuthController {
   }
 
   @Post('refresh-token')
-  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Cookies('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) response: Response,
   ) {
+    console.log('Received refreshToken:', refreshToken); // Добавьте лог
+
     if (!refreshToken) {
+      console.log('Refresh token not provided'); // Лог
       throw new UnauthorizedException('Refresh token not provided');
     }
 
     try {
       const { newAccessToken, newRefreshToken } =
         await this.authService.refreshToken(refreshToken);
+      console.log('Generated new tokens:', { newAccessToken, newRefreshToken });
 
       response.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
@@ -98,13 +101,13 @@ export class AuthController {
 
       return { accessToken: newAccessToken };
     } catch (e) {
+      console.error('Error in refresh-token:', e); // Лог ошибки
       response.clearCookie('refreshToken');
       throw e;
     }
   }
 
   @Post('logout')
-  @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Cookies('refreshToken') refreshToken: string,
@@ -115,11 +118,18 @@ export class AuthController {
     }
 
     try {
-      await this.authService.logout(refreshToken);
-      response.clearCookie('refreshToken');
+      // Проверяем токен перед удалением сессии
+      const payload = this.jwtService.verify(refreshToken);
+      await this.authService.logout(payload.deviceId);
     } catch (e) {
+      if (e instanceof TokenExpiredError) {
+        // Для истёкшего токена возвращаем 401
+        throw new UnauthorizedException('Refresh token expired');
+      }
+      // Для невалидного токена тоже 401
+      throw new UnauthorizedException('Invalid refresh token');
+    } finally {
       response.clearCookie('refreshToken');
-      throw e;
     }
   }
 

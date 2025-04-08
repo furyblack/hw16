@@ -14,10 +14,10 @@ export class SessionService {
     title: string;
     deviceId: string;
     userId: string;
+    lastActiveDate: string;
   }) {
     await this.sessionModel.create({
       ...sessionData,
-      lastActiveDate: new Date(),
     });
   }
 
@@ -25,8 +25,11 @@ export class SessionService {
     return this.sessionModel.findOne({ deviceId }).exec();
   }
 
-  async deleteSessionByDeviceId(deviceId: string) {
-    await this.sessionModel.deleteOne({ deviceId }).exec();
+  async deleteSessionByDeviceId(deviceId: string): Promise<void> {
+    const result = await this.sessionModel.deleteOne({ deviceId }).exec();
+    if (result.deletedCount === 0) {
+      throw new NotFoundException('Session not found');
+    }
   }
 
   async updateSessionLastActiveDate(deviceId: string) {

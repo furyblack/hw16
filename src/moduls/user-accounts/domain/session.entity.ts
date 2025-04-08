@@ -10,7 +10,7 @@ export class Session {
   title: string; // из User-Agent
 
   @Prop({ required: true })
-  lastActiveDate: Date;
+  lastActiveDate: string;
 
   @Prop({ required: true })
   deviceId: string;
