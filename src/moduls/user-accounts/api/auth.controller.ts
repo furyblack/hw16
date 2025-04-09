@@ -31,6 +31,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { Cookies } from '../decarators/cookies.decorator';
 import { Request } from 'express';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
+import { AccessTokenGuard } from '../guards/cookies-guard';
 
 @Controller('auth')
 export class AuthController {
@@ -108,6 +109,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @UseGuards(AccessTokenGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Cookies('refreshToken') refreshToken: string,

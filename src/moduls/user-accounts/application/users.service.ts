@@ -17,6 +17,7 @@ export class UsersService {
   async isLoginTaken(login: string): Promise<boolean> {
     return this.usersRepository.loginIsExist(login);
   }
+
   async createUser(dto: CreateUserDto): Promise<Types.ObjectId> {
     return this.createUserUseCase.execute(dto);
   }
