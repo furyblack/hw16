@@ -11,18 +11,15 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express'; // Импортируем Response из express
+import { Response } from 'express';
 import { AuthService } from '../application/auth.service';
 import { AuthQueryRepository } from '../infrastructure/query/auth.query-repository';
 import { CreateUserInputDto } from './input-dto/users.input-dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../guards/bearer/jwt-auth.guard';
 import { ExtractUserFromRequest } from '../guards/decorators/param/extract-user-from-request.decorator';
-import { Nullable, UserContextDto } from '../guards/dto/user-context.dto';
+import { UserContextDto } from '../guards/dto/user-context.dto';
 import { MeViewDto } from './view-dto/users.view-dto';
 import { LocalAuthGuard } from '../guards/local/local-auth.guard';
-import { JwtOptionalAuthGuard } from '../guards/bearer/jwt-optional-auth.guard';
-import { ExtractUserIfExistsFromRequest } from '../guards/decorators/param/extract-user-if-exists-from-request.decorator';
 import {
   ConfirmRegistrationDto,
   PasswordRecoveryDto,
@@ -31,7 +28,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { Cookies } from '../decarators/cookies.decorator';
 import { Request } from 'express';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
-import { AccessTokenGuard } from '../guards/cookies-guard';
+import { RefreshTokenGuard } from '../guards/bearer/refresh-guard';
 
 @Controller('auth')
 export class AuthController {
@@ -109,7 +106,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(AccessTokenGuard)
+  @UseGuards(RefreshTokenGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Cookies('refreshToken') refreshToken: string,
@@ -142,23 +139,6 @@ export class AuthController {
     const x = await this.authQueryRepository.me(user.userId);
     console.log(x);
     return x;
-  }
-
-  @ApiBearerAuth()
-  @Get('me-or-default')
-  @UseGuards(JwtOptionalAuthGuard)
-  async meOrDefault(
-    @ExtractUserIfExistsFromRequest() user: UserContextDto,
-  ): Promise<Nullable<MeViewDto>> {
-    if (user) {
-      return this.authQueryRepository.me(user.userId!);
-    } else {
-      return {
-        login: 'anonymous',
-        userId: null,
-        email: null,
-      };
-    }
   }
 
   @Post('registration-confirmation')
