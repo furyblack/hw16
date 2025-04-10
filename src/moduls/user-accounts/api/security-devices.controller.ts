@@ -16,7 +16,7 @@ export class SecurityDevicesController {
   @Get('devices')
   @UseGuards(JwtAuthGuard)
   async getDevices(@ExtractUserFromRequest() user: UserContextDto) {
-    return this.sessionService.findAllSessionsForUser(user.id);
+    return this.sessionService.findAllSessionsForUser(user.userId);
   }
 
   @Delete('devices')
@@ -26,7 +26,10 @@ export class SecurityDevicesController {
     @Cookies('refreshToken') refreshToken: string,
   ) {
     const payload = this.jwtService.verify(refreshToken);
-    await this.sessionService.deleteAllOtherSessions(user.id, payload.deviceId);
+    await this.sessionService.deleteAllOtherSessions(
+      user.userId,
+      payload.deviceId,
+    );
     return { statusCode: 204 };
   }
 
@@ -36,7 +39,7 @@ export class SecurityDevicesController {
     @ExtractUserFromRequest() user: UserContextDto,
     @Param('deviceId') deviceId: string,
   ) {
-    await this.sessionService.terminateSpecificSession(user.id, deviceId);
+    await this.sessionService.terminateSpecificSession(user.userId, deviceId);
     return { statusCode: 204 };
   }
 }

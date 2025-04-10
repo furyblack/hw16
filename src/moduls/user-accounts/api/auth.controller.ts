@@ -62,7 +62,7 @@ export class AuthController {
     const ip = request.ip ?? 'unknown'; // На всякий случай обрабатываем и ip
 
     const { accessToken, refreshToken } = await this.authService.login(
-      user.id,
+      user.userId,
       ip,
       userAgent,
     );
@@ -135,11 +135,13 @@ export class AuthController {
     }
   }
 
-  @ApiBearerAuth()
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@ExtractUserFromRequest() user: UserContextDto): Promise<MeViewDto> {
-    return this.authQueryRepository.me(user.id);
+    console.log(`user`, user);
+    const x = await this.authQueryRepository.me(user.userId);
+    console.log(x);
+    return x;
   }
 
   @ApiBearerAuth()
@@ -149,7 +151,7 @@ export class AuthController {
     @ExtractUserIfExistsFromRequest() user: UserContextDto,
   ): Promise<Nullable<MeViewDto>> {
     if (user) {
-      return this.authQueryRepository.me(user.id!);
+      return this.authQueryRepository.me(user.userId!);
     } else {
       return {
         login: 'anonymous',

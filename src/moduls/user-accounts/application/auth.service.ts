@@ -112,7 +112,7 @@ export class AuthService {
       return null;
     }
 
-    return { id: user.id.toString() };
+    return { userId: user.id.toString() };
   }
 
   async confirmRegistration(code: string): Promise<void> {

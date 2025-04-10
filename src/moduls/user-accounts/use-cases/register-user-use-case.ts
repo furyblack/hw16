@@ -1,5 +1,4 @@
 import { CreateUserDto } from '../dto/create-user.dto';
-import { Types } from 'mongoose';
 import { CreateUserUseCase } from './create-user-use-case';
 import { UsersRepository } from '../infrastructure/users.repository';
 import { EmailService } from '../../notifications/email.service';
@@ -19,7 +18,7 @@ export class RegisterUserUseCase {
     const confirmCode = 'uuid';
 
     const user = await this.usersRepository.findOrNotFoundFail(
-      new Types.ObjectId(createdUserId),
+      createdUserId.toString(),
     );
 
     user.setConfirmationCode(confirmCode);
