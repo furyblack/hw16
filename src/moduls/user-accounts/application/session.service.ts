@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Session, SessionDocument } from '../domain/session.entity';
@@ -54,18 +58,14 @@ export class SessionService {
     userId: string,
     deviceId: string,
   ): Promise<void> {
-    // Проверяем, что сессия принадлежит пользователю
-    const session = await this.sessionModel
-      .findOne({
-        deviceId,
-        userId,
-      })
-      .exec();
+    const session = await this.sessionModel.findOne({ deviceId }).exec();
 
     if (!session) {
-      throw new NotFoundException(
-        'Session not found or does not belong to user',
-      );
+      throw new NotFoundException('Session not found');
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('Session does not belong to user');
     }
 
     await this.sessionModel.deleteOne({ deviceId }).exec();

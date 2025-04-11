@@ -1,10 +1,10 @@
 import { Controller, Get, Delete, Param, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { SessionService } from '../application/session.service';
-import { JwtAuthGuard } from '../guards/bearer/jwt-auth.guard';
 import { ExtractUserFromRequest } from '../guards/decorators/param/extract-user-from-request.decorator';
 import { UserContextDto } from '../guards/dto/user-context.dto';
 import { Cookies } from '../decarators/cookies.decorator';
+import { RefreshTokenGuardPower } from '../guards/bearer/refresh-guard v2.0';
 
 @Controller('security')
 export class SecurityDevicesController {
@@ -14,13 +14,21 @@ export class SecurityDevicesController {
   ) {}
 
   @Get('devices')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RefreshTokenGuardPower)
   async getDevices(@ExtractUserFromRequest() user: UserContextDto) {
-    return this.sessionService.findAllSessionsForUser(user.userId);
+    const sessions = await this.sessionService.findAllSessionsForUser(
+      user.userId,
+    );
+    return sessions.map((session) => ({
+      ip: session.ip,
+      title: session.title,
+      lastActiveDate: session.lastActiveDate,
+      deviceId: session.deviceId,
+    }));
   }
 
   @Delete('devices')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RefreshTokenGuardPower)
   async terminateOtherSessions(
     @ExtractUserFromRequest() user: UserContextDto,
     @Cookies('refreshToken') refreshToken: string,
@@ -30,16 +38,16 @@ export class SecurityDevicesController {
       user.userId,
       payload.deviceId,
     );
-    return { statusCode: 204 };
+    // Возвращаем 204 без тела
   }
 
   @Delete('devices/:deviceId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RefreshTokenGuardPower)
   async terminateDevice(
     @ExtractUserFromRequest() user: UserContextDto,
     @Param('deviceId') deviceId: string,
   ) {
     await this.sessionService.terminateSpecificSession(user.userId, deviceId);
-    return { statusCode: 204 };
+    // Возвращаем 204 без тела
   }
 }
