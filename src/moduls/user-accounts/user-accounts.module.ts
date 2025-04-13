@@ -20,6 +20,7 @@ import { RegisterUserUseCase } from './use-cases/register-user-use-case';
 import { DeleteUserUseCase } from './use-cases/delete-user-use-case';
 import { Session, SessionSchema } from './domain/session.entity';
 import { SessionService } from './application/session.service';
+import { JwtRefreshStrategy } from './guards/jwtRefreshStrategy';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { SessionService } from './application/session.service';
     LocalStrategy,
     CryptoService,
     JwtStrategy,
+    JwtRefreshStrategy,
     CreateUserUseCase,
     RegisterUserUseCase,
     DeleteUserUseCase,

@@ -27,8 +27,8 @@ import {
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Cookies } from '../decarators/cookies.decorator';
 import { Request } from 'express';
-import { JwtService, TokenExpiredError } from '@nestjs/jwt';
-import { RefreshTokenGuard } from '../guards/bearer/refresh-guard';
+import { JwtService } from '@nestjs/jwt';
+import { RefreshTokenGuardR } from '../guards/refresh-token-guard v2';
 
 @Controller('auth')
 export class AuthController {
@@ -106,30 +106,13 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(RefreshTokenGuard)
+  @UseGuards(RefreshTokenGuardR)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(
-    @Cookies('refreshToken') refreshToken: string,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token not provided');
-    }
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const user = req.user as { deviceId: string };
 
-    try {
-      // Проверяем токен перед удалением сессии
-      const payload = this.jwtService.verify(refreshToken);
-      await this.authService.logout(payload.deviceId);
-    } catch (e) {
-      if (e instanceof TokenExpiredError) {
-        // Для истёкшего токена возвращаем 401
-        throw new UnauthorizedException('Refresh token expired');
-      }
-      // Для невалидного токена тоже 401
-      throw new UnauthorizedException('Invalid refresh token');
-    } finally {
-      response.clearCookie('refreshToken');
-    }
+    await this.authService.logout(user.deviceId); // деактивировать сессию
+    res.clearCookie('refreshToken');
   }
 
   @Get('me')
