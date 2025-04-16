@@ -177,7 +177,7 @@ export class AuthService {
   }
 
   async refreshTokens(userId: string, deviceId: string) {
-    // Обновляем токены, но deviceId должен оставаться прежним
+    // Обновляем токены, но deviceId должен оставаться прежним ага
     const tokens = await this.generateRefreshToken(userId, deviceId);
     await this.sessionService.updateSessionLastActiveDate(deviceId);
     return tokens;
