@@ -79,10 +79,10 @@ export class AuthController {
     @Cookies('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    console.log('Received refreshToken:', refreshToken); // Добавьте лог
+    console.log('Received refreshToken:', refreshToken);
 
     if (!refreshToken) {
-      console.log('Refresh token not provided'); // Лог
+      console.log('Refresh token not provided');
       throw new UnauthorizedException('Refresh token not provided');
     }
 
