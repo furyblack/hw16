@@ -99,7 +99,7 @@ export class AuthController {
 
       return { accessToken: newAccessToken };
     } catch (e) {
-      console.error('Error in refresh-token:', e); // Лог ошибки
+      console.error('Error in refresh-token:', e);
       response.clearCookie('refreshToken');
       throw e;
     }
@@ -126,7 +126,7 @@ export class AuthController {
 
   @Post('registration-confirmation')
   @UseGuards(ThrottlerGuard)
-  @HttpCode(HttpStatus.NO_CONTENT) // 204 при успешном подтверждении
+  @HttpCode(HttpStatus.NO_CONTENT)
   async confirmRegistration(
     @Body() dto: ConfirmRegistrationDto,
   ): Promise<void> {
