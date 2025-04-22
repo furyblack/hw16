@@ -7,7 +7,7 @@ export class Session {
   ip: string;
 
   @Prop({ required: true })
-  title: string; // из User-Agent
+  title: string;
 
   @Prop({ required: true })
   lastActiveDate: string;
