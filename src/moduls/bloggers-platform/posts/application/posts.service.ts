@@ -79,10 +79,6 @@ export class PostsService {
     return post._id.toString();
   }
 
-  async findById(postId: string): Promise<Post | null> {
-    return this.postModel.findById(postId).exec();
-  }
-
   async deletePost(id: string) {
     const post = await this.postRepository.findOrNotFoundFail(id);
     post.makeDeleted();
